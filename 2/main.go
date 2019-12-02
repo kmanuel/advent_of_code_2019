@@ -2,25 +2,26 @@ package main
 
 import (
 	"bufio"
+	"errors"
 	"os"
 	"strconv"
 	"strings"
 )
 
 func main() {
-	// star1()
-	star2()
+	println(star1())
+	println(star2())
 }
 
-func star1() {
+func star1() int {
 	f := openFile()
 	defer f.Close()
 	numbers := parse(f)
 	result := calculateResult(numbers)
-	println(result)
+	return result
 }
 
-func star2() {
+func star2() int {
 	f := openFile()
 	defer f.Close()
 	numbers := parse(f)
@@ -33,44 +34,94 @@ func star2() {
 			result := calculateResult(inputCopy)
 			if result == 19690720 {
 				endRes := 100*x + y
-				println(endRes)
+				return endRes
 			}
 			copy(inputCopy, numbers)
 		}
 	}
-	print("found none")
+	return -1
 }
 
-func calculateResult(memory []int) int {
-	for i := 0; i < len(memory); i += 4 {
-		instructionCode := memory[i]
-		if instructionCode != 1 && instructionCode != 2 && instructionCode != 99 {
-			return -1
-		}
-		firstArgPos := memory[i+1]
-		if firstArgPos > len(memory) {
-			return -1
-		}
-		secondArgPos := memory[i+2]
-		if secondArgPos > len(memory) {
-			return -1
-		}
-		resultPos := memory[i+3]
-		if resultPos > len(memory) {
-			return -1
-		}
+const (
+	OPCODE_ADD       = 1
+	OPCODE_MULT      = 2
+	OPCODE_TERMINATE = 99
+)
 
-		if instructionCode == 1 {
-			memory[resultPos] = memory[firstArgPos] + memory[secondArgPos]
+func calculateResult(memory []int) int {
+	for i := 0; i < len(memory); {
+		opCode := memory[i]
+		op, err := getOperationForCode(opCode, i)
+		if err != nil {
+			return -1
 		}
-		if instructionCode == 2 {
-			memory[resultPos] = memory[firstArgPos] * memory[secondArgPos]
-		}
-		if instructionCode == 99 {
+		res := op.execute(memory)
+		if res == 0 {
 			return memory[0]
 		}
+		i += res
 	}
 	return memory[0]
+}
+
+func getOperationForCode(code int, start int) (operation, error) {
+	if code == OPCODE_ADD {
+		return addOperation{start: start}, nil
+	}
+	if code == OPCODE_MULT {
+		return multOperation{start: start}, nil
+	}
+	if code == OPCODE_TERMINATE {
+		return terminateOperation{}, nil
+	}
+	return nil, errors.New("no matching operation found")
+}
+
+type memory []int
+
+func (m memory) getReferencedValue(i int) int {
+	return m[m[i]]
+}
+
+func (m memory) getReference(i int) *int {
+	return &m[m[i]]
+}
+
+type operation interface {
+	execute(memory memory) int
+}
+
+type addOperation struct {
+	start int
+}
+
+func (o addOperation) execute(m memory) int {
+	s := o.start
+	val1 := m.getReferencedValue(s + 1)
+	val2 := m.getReferencedValue(s + 2)
+	targetRef := m.getReference(s + 3)
+	*targetRef = val1 + val2
+	return 4
+}
+
+type multOperation struct {
+	start int
+}
+
+func (o multOperation) execute(m memory) int {
+	s := o.start
+	val1 := m.getReferencedValue(s + 1)
+	val2 := m.getReferencedValue(s + 2)
+	targetRef := m.getReference(s + 3)
+	*targetRef = val1 * val2
+	return 4
+}
+
+type terminateOperation struct {
+}
+
+func (o terminateOperation) execute(memory memory) int {
+	return 0
 }
 
 func openFile() *os.File {
