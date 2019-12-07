@@ -47,15 +47,11 @@ func (m memory) getReference(i int) *int {
 func (m memory) getArgumentNr(opStart int, argNum int) int {
 	op := m[opStart]
 	var refType int
-	if argNum == 1 {
-		refType = op / 100 % 10
+	offset := 10
+	for i := 0; i < argNum; i++ {
+		offset *= 10
 	}
-	if argNum == 2 {
-		refType = op / 1000 % 10
-	}
-	if argNum == 3 {
-		refType = op / 10000 % 10
-	}
+	refType = op / offset % 10
 	if refType == refPosition {
 		return m.getReferencedValue(opStart + argNum)
 	}
