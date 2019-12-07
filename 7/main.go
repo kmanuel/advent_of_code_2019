@@ -2,16 +2,11 @@ package main
 
 import (
 	"fmt"
-	"log"
-	"time"
 )
 
 func main() {
-	start := time.Now()
 	res := getMaxResultForDifferentPhaseSettings()
 	fmt.Printf("%d\n", res)
-	elapsed := time.Since(start)
-	log.Printf("took %s", elapsed)
 }
 
 func getMaxResultForDifferentPhaseSettings() int {
