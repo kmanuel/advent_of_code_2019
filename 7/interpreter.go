@@ -1,48 +1,48 @@
 package main
 
-import (
-	"errors"
-)
-
 type interpreter struct {
-	memory             memory
-	instructionPointer int
-	fixedInputs        []int
-	output             int
-	inputCursor        int
-	hasOutput          bool
-	terminated         bool
+	memory memory
+	state  state
+}
+
+func newInterpreter(phaseSetting int) interpreter {
+	memory := newMemory()
+	interpreter := interpreter{
+		memory: memory,
+		state:  state{},
+	}
+	interpreter.setPhase(phaseSetting)
+	return interpreter
 }
 
 func (i *interpreter) runForInput(input int) int {
-	i.hasOutput = false
-	i.fixedInputs = append(i.fixedInputs, input)
+	i.state.hasOutput = false
+	i.state.fixedInputs = append(i.state.fixedInputs, input)
 	i.calculateResult()
-	return i.output
+	return i.state.output
 }
 
-func (i *interpreter) addInput(input int) {
-	i.fixedInputs = append(i.fixedInputs, input)
+func (i *interpreter) setPhase(input int) {
+	i.state.addInput(input)
 }
 
 func (i *interpreter) isTerminateReached() bool {
-	return i.instructionPointer >= len(i.memory) || i.terminated
+	return i.state.instructionPointer >= len(i.memory) || i.state.terminated
 }
 
 func (i *interpreter) calculateResult() int {
-	for !i.isTerminateReached() && !i.hasOutput {
-		i.performNextInstruction()
+	for !i.isTerminateReached() && !i.state.hasOutput {
+		op := i.getNextOperation()
+		op.execute(i.memory, &i.state)
 	}
 	return i.memory[0]
 }
 
-func (i *interpreter) performNextInstruction() {
-	memory := i.memory
-	instructionPointer := i.instructionPointer
-	opCode := memory[instructionPointer]
-	op, _ := i.getOperationForCode(opCode)
-	res := op.execute(memory)
-	i.instructionPointer = res
+func (i *interpreter) getNextOperation() operation {
+	instructionPointer := i.state.instructionPointer
+	opCode := i.memory[instructionPointer]
+	operationPart := opCode % 100
+	return codesToOperations[operationPart]
 }
 
 const (
@@ -57,39 +57,14 @@ const (
 	codeTerminate   = 99
 )
 
-func (i *interpreter) getOperationForCode(code int) (operation, error) {
-	start := i.instructionPointer
-	operationPart := code % 100
-	if operationPart == codeAdd {
-		return addOperation{start: start}, nil
-	}
-	if operationPart == codeMult {
-		return multOperation{start: start}, nil
-	}
-	if operationPart == codeInput {
-		input := i.fixedInputs[i.inputCursor]
-		i.inputCursor = i.inputCursor + 1
-		return &nonInteractiveInputOperation{
-			start: start,
-			input: input}, nil
-	}
-	if operationPart == codeOutput {
-		return &outputOperation{start: start, output: &i.output, hasOutput: &i.hasOutput}, nil
-	}
-	if operationPart == codeTerminate {
-		return terminateOperation{terminated: &i.terminated}, nil
-	}
-	if operationPart == codeJumpIfTrue {
-		return jumpIfTrueOperation{start: start}, nil
-	}
-	if operationPart == codeJumpIfFalse {
-		return jumpIfFalseOperation{start: start}, nil
-	}
-	if operationPart == codeLessThan {
-		return lessThanOperation{start: start}, nil
-	}
-	if operationPart == codeEquals {
-		return equalOperation{start: start}, nil
-	}
-	return nil, errors.New("no matching operation found")
+var codesToOperations = map[int]operation{
+	codeAdd:         addOperation{},
+	codeMult:        multOperation{},
+	codeInput:       &nonInteractiveInputOperation{},
+	codeOutput:      &outputOperation{},
+	codeJumpIfTrue:  &jumpIfTrueOperation{},
+	codeJumpIfFalse: jumpIfFalseOperation{},
+	codeLessThan:    lessThanOperation{},
+	codeEquals:      equalOperation{},
+	codeTerminate:   terminateOperation{},
 }

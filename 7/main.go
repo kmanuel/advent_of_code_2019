@@ -37,39 +37,25 @@ func runPhaseSetting(phaseSetting []int) int {
 	running := true
 	for running {
 		res = a.runForInput(res)
-		if a.terminated {
+		if a.state.terminated {
 			break
 		}
 		res = b.runForInput(res)
-		if b.terminated {
+		if b.state.terminated {
 			break
 		}
 		res = c.runForInput(res)
-		if c.terminated {
+		if c.state.terminated {
 			break
 		}
 		res = d.runForInput(res)
-		if d.terminated {
+		if d.state.terminated {
 			break
 		}
 		res = e.runForInput(res)
-		if e.terminated {
+		if e.state.terminated {
 			break
 		}
 	}
-	return e.output
-}
-
-func newInterpreter(phaseSetting int) interpreter {
-	memory := newMemory()
-	interpreter := interpreter{
-		memory:      memory,
-		fixedInputs: []int{phaseSetting},
-	}
-	return interpreter
-}
-
-func star2() int {
-
-	return -1
+	return e.state.output
 }
